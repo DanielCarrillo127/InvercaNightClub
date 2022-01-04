@@ -42,22 +42,7 @@ const verifyUsername = async (username = '') => {
 
 }
 
-const verifyBook = async (isbn = '') => {
-
-    //Search user in the database
-    await pool
-        .query(findISBN, [isbn])
-        .then(rest => {
-            const auxUser = rest.rows[0];
-            if (typeof auxUser != 'undefined') {
-                throw new Error('Book already use - Check ISBN');
-            }
-        })
-
-
-}
-
 
 module.exports = {
-    verifyEmail, verifyUsername, verifyBook
+    verifyEmail, verifyUsername
 }

@@ -6,6 +6,9 @@ const Customer = require('../models/customer.models');
 const Product = require('../models/product.models');
 const { dbConnection } = require('../../config/database/config.database');
 
+const { generateIdUser } = require('../helpers/generate-id');
+
+
 const insertOrder = 'INSERT INTO orders (customerid, datecreated, ordertype,paytypeid, paycomplement, total) VALUES($1, $2, $3, $4, $5, $6) returning orderid'
 const insertCart = 'INSERT INTO cart (orderid, productid, quantity) VALUES($1, $2, $3) '
 const update = 'UPDATE product SET quantity = $2 WHERE productid = $1'
@@ -15,7 +18,10 @@ const updateCustomerBalance = 'UPDATE customer set currentbalance = $2 where ced
 const selectProducts = 'select * from product where productid in'
 const delete2 = 'DELETE FROM orders where orderid = $1'
 
-const insertCustomer = 'INSERT INTO customer (cedula, firstname, lastname, datecreated, phonenumber, credit, currentbalance) values ($1, $2, $3, $4, $5, $6, $7) returning customerid'
+const insertCustomer = 'INSERT INTO customer (customerid, cedula, firstname, lastname, datecreated, phonenumber, credit, currentbalance, role) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning customerid'
+
+
+const selectCustomerRole = 'SELECT * from users where cedula = $1'
 
 const pool = dbConnection();
 
@@ -66,6 +72,8 @@ const registerCustomer = async (req, res = response) => {
     const { cedula, firstName, lastName, phoneNumber, credit } = req.body;
 
     let auxCustomer;
+
+    //Search Customer by CustomerId for preview existence
     await pool
         .query(selectCustomer, [cedula])
         .then(rest => {
@@ -81,12 +89,36 @@ const registerCustomer = async (req, res = response) => {
         })
     }
 
-    //Search Customer by CustomerId 
+
     let customer;
     const currentTime = new Date();
+    //credit amplify by 5 
     let creditInt = parseInt(credit) * 5
+
+    //Search Customer by Cedula for define role
+    // (find in users by cedula 1 SuperAdmin - 2 Cajero - 3 Almacen - 4 Usuario retenido)
+    let role;
+
     await pool
-        .query(insertCustomer, [cedula, firstName, lastName, currentTime, phoneNumber, creditInt, creditInt])
+        .query(selectCustomerRole, [cedula])
+        .then(rest => {
+            auxCustomer = rest.rows[0];
+        })
+        .catch(e => {
+            console.log(e.stack)
+        });
+
+    if (typeof auxCustomer === 'undefined') {
+        role = 4;
+    } else{
+        role = auxCustomer.role;
+    }
+
+    // Create customer id
+    let customerid = generateIdUser(role, firstName, lastName, cedula)
+
+    await pool
+        .query(insertCustomer, [customerid, cedula, firstName, lastName, currentTime, phoneNumber, creditInt, creditInt, role])
         .then(rest => {
             const auxCustomer = rest.rows[0];
 
@@ -123,7 +155,7 @@ const addOrders = async (req, res = response) => {
     let now = moment().format();
 
     //Create the model ORDER
-    const orders = new Orders(customerid, now, ordertype, paytype, paycomplement, total, undefined);
+    const orders = new Orders(customerid, now, ordertype, paytype, paycomplement, total, total);
 
 
     if (ordertype === "Crédito") {
@@ -431,7 +463,7 @@ const UpdateCustomerBalance = async (req, res = response) => {
             cedula: cedula
         })
     } else {
-        
+
         let newBalance = customer.getCurrentbalance() + parseInt(amount);
         await pool
             .query(updateCustomerBalance, [cedula, newBalance])

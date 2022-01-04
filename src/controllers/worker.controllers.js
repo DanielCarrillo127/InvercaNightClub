@@ -3,7 +3,9 @@ const { dbConnection } = require('../../config/database/config.database');
 const moment = require('moment');
 
 
-const insert = 'INSERT INTO product (proname, price, quantity, datecreated,updatedatecreated, category, image) VALUES($1, $2, $3, $4, $5, $6, $7) returning productid'
+const { generateIdProducts } = require('../helpers/generate-id');
+
+const insert = 'INSERT INTO product (productid, proname, price, quantity, datecreated,updatedatecreated, category, image) VALUES($1, $2, $3, $4, $5, $6, $7, $8) returning productid'
 const deleteQuery = 'DELETE FROM product WHERE productid = $1'
 const selectAll = 'select * from product'
 const searchQuery = 'select * from product where productid = $1'
@@ -29,13 +31,17 @@ const addProduct = async (req, res = response) => {
     // console.log(now)
     const currentTime = new Date();
 
-    const product = new Product(proname, intprice, intquantity, currentTime, undefined, category, image, undefined);
+    // Create product id
+    const productid = generateIdProducts(proname, category)
+
+    const product = new Product(proname, intprice, intquantity, currentTime, undefined, category, image, productid);
     console.log(product)
     //Insert product into database
     await pool
-        .query(insert, product.toList2())
+        .query(insert, product.toList())
         .then(rest => {
             //pool.end();
+            console.log('productid', rest)
             return res.status(201).json({
                 msg: 'Product created successfully',
                 product: product.toValue()

@@ -9,9 +9,10 @@ class Customer {
     phoneNumber;
     credit;
     currentbalance;
+    role;
 
     //Constructors
-    constructor(cedula, firstName, lastName, datecreated,phoneNumber,credit, currentbalance,customerId) {
+    constructor(cedula, firstName, lastName, datecreated,phoneNumber,credit, currentbalance,customerId, role) {
 
         this.customerId = customerId;
         this.cedula = cedula;
@@ -21,6 +22,7 @@ class Customer {
         this.phoneNumber = phoneNumber;
         this.credit = credit;
         this.currentbalance = currentbalance;
+        this.role = role;
     }
 
     //Getters
@@ -54,6 +56,9 @@ class Customer {
     getCurrentbalance() {
         return this.currentbalance;
     }
+    getRole() {
+        return this.role;
+    }
 
     //Setters
 
@@ -66,7 +71,8 @@ class Customer {
             datecreated: this.datecreated,
             phoneNumber: this.phoneNumber,
             credit:this.credit,
-            currentbalance:this.currentbalance
+            currentbalance:this.currentbalance,
+            role:this.role
         }))
     }
 
@@ -78,7 +84,8 @@ class Customer {
             datecreated: this.datecreated,
             phoneNumber: this.phoneNumber,
             credit:this.credit,
-            currentbalance:this.currentbalance
+            currentbalance:this.currentbalance,
+            role:this.role
         }))
     }
 
@@ -86,7 +93,7 @@ class Customer {
     toValue() {
         return [`cedula: ${this.cedula}`, `firstName: ${this.firstName}`, `lastName: ${this.lastName}`, 
         `datecreated: ${this.datecreated}`, `phoneNumber: ${this.PhoneNumber}`, `credit: ${this.credit}`,
-        `currentbalance: ${this.currentbalance}`
+        `currentbalance: ${this.currentbalance}` , `role: ${this.role}`
         ]
     }
 
