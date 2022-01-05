@@ -6,7 +6,7 @@ const Customer = require('../models/customer.models');
 const Product = require('../models/product.models');
 const { dbConnection } = require('../../config/database/config.database');
 
-const { generateIdUser } = require('../helpers/generate-id');
+const { generateIdUser, generateIdTransaction } = require('../helpers/generate-id');
 
 
 const insertOrder = 'INSERT INTO orders (customerid, datecreated, ordertype,paytypeid, paycomplement, total) VALUES($1, $2, $3, $4, $5, $6) returning orderid'
@@ -19,6 +19,9 @@ const selectProducts = 'select * from product where productid in'
 const delete2 = 'DELETE FROM orders where orderid = $1'
 
 const insertCustomer = 'INSERT INTO customer (customerid, cedula, firstname, lastname, datecreated, phonenumber, credit, currentbalance, role) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning customerid'
+
+
+const insertTransaction = 'INSERT INTO transaction (transactionid, date, customerid, transactiontype, currentbalance, finalbalance, paytypeid, paycomplement) values ($1, $2, $3, $4, $5, $6, $7, $8) returning transactionid'
 
 
 const selectCustomerRole = 'SELECT * from users where cedula = $1'
@@ -69,7 +72,7 @@ const GetCustomer = async (req, res = response) => {
 //                                                                                             REGISTER CUSTOMER
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 const registerCustomer = async (req, res = response) => {
-    const { cedula, firstName, lastName, phoneNumber, credit } = req.body;
+    const { cedula, firstName, lastName, phoneNumber, credit, paytypeid, paycomplement } = req.body;
 
     let auxCustomer;
 
@@ -110,7 +113,7 @@ const registerCustomer = async (req, res = response) => {
 
     if (typeof auxCustomer === 'undefined') {
         role = 4;
-    } else{
+    } else {
         role = auxCustomer.role;
     }
 
@@ -124,12 +127,13 @@ const registerCustomer = async (req, res = response) => {
 
             // console.log("usuario encontrado: ",rest.rows[0])
             if (typeof auxCustomer !== 'undefined') {
-                customer = new Customer(cedula, firstName, lastName, currentTime, phoneNumber, creditInt, creditInt, auxCustomer.customerid);
+                customer = new Customer(cedula, firstName, lastName, currentTime, phoneNumber, creditInt, creditInt, auxCustomer.customerid, role);
             }
         })
         .catch(e => {
             console.log(e.stack)
         });
+
 
     if (typeof customer == 'undefined') {
         //Create Customer
@@ -137,6 +141,26 @@ const registerCustomer = async (req, res = response) => {
             resp: 'There is an error in the backend!'
         })
     } else {
+
+        let now = moment().format();
+        let transactionid = generateIdTransaction(now, customerid, 2)
+
+        await pool
+            .query(insertTransaction, [transactionid, now, customerid, 2, customer.currentbalance, customer.currentbalance, paytypeid, paycomplement])
+            .then(rest => {
+                console.log("Transaction insert Successfully", ' ', rest)
+            })
+            .catch(e => {
+                console.log(e.stack)
+            });
+
+        if (typeof auxCustomer === 'undefined') {
+            role = 4;
+        } else {
+            role = auxCustomer.role;
+        }
+
+
         return res.status(201).json({
             Customer: customer.toJSON2(),
             resp: 'Customer Login Success'
@@ -156,7 +180,6 @@ const addOrders = async (req, res = response) => {
 
     //Create the model ORDER
     const orders = new Orders(customerid, now, ordertype, paytype, paycomplement, total, total);
-
 
     if (ordertype === "Crédito") {
         let customerOrder;
@@ -437,9 +460,9 @@ const addOrders = async (req, res = response) => {
 //                                                                                              Update Customer Balance
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 const UpdateCustomerBalance = async (req, res = response) => {
-    const { cedula, amount } = req.body;
+    const { cedula, amount, paytypeid, paycomplement } = req.body;
 
-    //Search Customer by CustomerId 
+    //Search Customer by cedula 
     let customer;
     await pool
         .query(selectCustomer, [cedula])
@@ -447,7 +470,7 @@ const UpdateCustomerBalance = async (req, res = response) => {
             const auxCustomer = rest.rows[0];
             if (typeof auxCustomer != 'undefined') {
                 //Login Customer
-                customer = new Customer(auxCustomer.cedula, auxCustomer.firstname, auxCustomer.lastname, auxCustomer.datecreated, auxCustomer.phonenumber, auxCustomer.credit, auxCustomer.currentbalance, auxCustomer.customerid);
+                customer = new Customer(auxCustomer.cedula, auxCustomer.firstname, auxCustomer.lastname, auxCustomer.datecreated, auxCustomer.phonenumber, auxCustomer.credit, auxCustomer.currentbalance, auxCustomer.customerid, auxCustomer.role);
             }
         })
         .catch(e => {
@@ -465,9 +488,22 @@ const UpdateCustomerBalance = async (req, res = response) => {
     } else {
 
         let newBalance = customer.getCurrentbalance() + parseInt(amount);
+
+        let now = moment().format();
+        let transactionid = generateIdTransaction(now, customer.customerId, 1)
+        await pool
+            .query(insertTransaction, [transactionid, now, customer.customerId, 1, customer.currentbalance, newBalance, paytypeid, paycomplement])
+            .then(rest => {
+                console.log("Transaction insert Successfully", ' ', rest)
+            })
+            .catch(e => {
+                console.log(e.stack)
+            });
+
         await pool
             .query(updateCustomerBalance, [cedula, newBalance])
             .then(rest => {
+                
                 return res.status(201).json({
                     Customer: customer.toJSON2(),
                     resp: 'Customer Balance Update'
@@ -479,6 +515,9 @@ const UpdateCustomerBalance = async (req, res = response) => {
                     resp: 'There is an error in the backend!'
                 })
             })
+
+
+
     }
 
 }
