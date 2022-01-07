@@ -9,13 +9,13 @@ const { dbConnection } = require('../../config/database/config.database');
 const { generateIdUser, generateIdTransaction } = require('../helpers/generate-id');
 
 
-const insertOrder = 'INSERT INTO orders (customerid, datecreated, ordertype,paytypeid, paycomplement, total) VALUES($1, $2, $3, $4, $5, $6) returning orderid'
+const insertOrder = 'INSERT INTO orders (customerid, datecreated, ordertype,paytypeid, paycomplement, total, subtotal) VALUES($1, $2, $3, $4, $5, $6, $7) returning orderid'
 const insertCart = 'INSERT INTO cart (orderid, productid, quantity) VALUES($1, $2, $3) '
 const update = 'UPDATE product SET quantity = $2 WHERE productid = $1'
 const selectCustomer = 'SELECT * from customer where cedula = $1'
 const selectCustomerid = 'SELECT * from customer where customerid = $1'
 const updateCustomerBalance = 'UPDATE customer set currentbalance = $2 where cedula = $1'
-const selectProducts = 'select * from product where productid in'
+const selectProducts = 'SELECT * FROM product WHERE productid in'
 const delete2 = 'DELETE FROM orders where orderid = $1'
 
 const insertCustomer = 'INSERT INTO customer (customerid, cedula, firstname, lastname, datecreated, phonenumber, credit, currentbalance, role) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning customerid'
@@ -179,10 +179,12 @@ const addOrders = async (req, res = response) => {
     let now = moment().format();
 
     //Create the model ORDER
+    /////////// add orders system for subtotal
     const orders = new Orders(customerid, now, ordertype, paytype, paycomplement, total, total);
 
     if (ordertype === "Crédito") {
         let customerOrder;
+        
         await pool
             .query(selectCustomerid, [customerid])
             .then(rest => {
@@ -202,7 +204,6 @@ const addOrders = async (req, res = response) => {
                 .catch(e => {
                     console.log(e.stack)
                 });
-
             if (typeof auxOrderId != 'undefined') {
                 orders.setOrderId(auxOrderId.orderid)
             } else {
@@ -215,7 +216,7 @@ const addOrders = async (req, res = response) => {
             //Create the model CART
             let listProductsId = [];
             cart.forEach(product => {
-                listProductsId.push(product.productId);
+                listProductsId.push(`'${product.productId}'`);
             });
 
             //Verify if the product exists
@@ -291,6 +292,17 @@ const addOrders = async (req, res = response) => {
                             console.log(e.stack)
                         });
 
+
+                    let transactionid = generateIdTransaction(now, customerOrder.customerid, 4)
+                    await pool
+                        .query(insertTransaction, [transactionid, now, customerOrder.customerid, 1, customerOrder.currentbalance, UpdateBalance, 'Crédito',`Orden id No. ${orders.orderId}`])
+                        .then(rest => {
+                            console.log("Transaction insert Successfully", ' ', rest)
+                        })
+                        .catch(e => {
+                            console.log(e.stack)
+                        });
+
                     //Insert CART into database
                     await pool
                         .query(insertCart, cart2.toList())
@@ -350,10 +362,10 @@ const addOrders = async (req, res = response) => {
             })
         }
 
-        //Create the model CART
+        //Create the model CART lsit of products from the CART obtain
         let listProductsId = [];
         cart.forEach(product => {
-            listProductsId.push(product.productId);
+            listProductsId.push(`'${product.productId}'`);
         });
 
         //Verify if the product exists
@@ -362,6 +374,7 @@ const addOrders = async (req, res = response) => {
         await pool
             .query(`${selectProducts} (${listProductsId})`)
             .then(rest => {
+
                 if (typeof rest.rows == 'undefined' || rest.rows.length != listProductsId.length) {
                     exist = false;
                 } else {
@@ -371,6 +384,7 @@ const addOrders = async (req, res = response) => {
                                 msg: 'These no products on the database'
                             })
                         }
+
                         let auxProduct = rest.rows[i];
                         let product = new Product(auxProduct.proname, auxProduct.price, auxProduct.quantity, auxProduct.datecreated, auxProduct.updatedatecreated, auxProduct.category, auxProduct.image, auxProduct.productid);
 
@@ -379,8 +393,9 @@ const addOrders = async (req, res = response) => {
                 }
             })
             .catch(e => {
+                console.log(e.stack)
                 return res.status(500).json({
-                    msg: 'Error in the database process please check your settings',
+                    msg: 'Error in the database process with the productlist please check your settings',
                     err: e.stack
                 })
             });
@@ -503,7 +518,7 @@ const UpdateCustomerBalance = async (req, res = response) => {
         await pool
             .query(updateCustomerBalance, [cedula, newBalance])
             .then(rest => {
-                
+
                 return res.status(201).json({
                     Customer: customer.toJSON2(),
                     resp: 'Customer Balance Update'

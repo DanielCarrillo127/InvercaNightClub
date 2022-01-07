@@ -7,9 +7,10 @@ class Orders {
     payTypeId;
     paycomplement;
     total;
+    subtotal;
 
 
-    constructor(customerId, dateCreated, ordertype, payTypeId, paycomplement, total, orderId) {
+    constructor(customerId, dateCreated, ordertype, payTypeId, paycomplement, total, subtotal,  orderId) {
 
         this.orderId = orderId;
         this.customerId = customerId;
@@ -18,6 +19,7 @@ class Orders {
         this.payTypeId = payTypeId;
         this.paycomplement = paycomplement;
         this.total = total;
+        this.subtotal = subtotal;
 
 
     }
@@ -50,6 +52,9 @@ class Orders {
     getTotal() {
         return this.total;
     }
+    getSubTotal() {
+        return this.subtotal;
+    }
 
     //Setters
     setOrderId(orderId) {
@@ -79,6 +84,9 @@ class Orders {
     setTotal() {
         this.total = total;
     }
+    setSubTotal() {
+        this.subtotal = subtotal;
+    }
 
     //JSON
     //To JSON
@@ -91,12 +99,13 @@ class Orders {
             ordertype: this.ordertype,
             payTypeId: this.payTypeId,
             paycomplement: this.paycomplement,
-            total: this.total
+            total: this.total,
+            subtotal: this.subtotal
         }))
     }
 
     toList() {
-        return [this.customerId, this.dateCreated, this.ordertype, this.payTypeId, this.paycomplement, this.total];
+        return [this.customerId, this.dateCreated, this.ordertype, this.payTypeId, this.paycomplement, this.total, this.subtotal];
     }
 
     toValue() {
