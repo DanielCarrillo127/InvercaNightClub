@@ -295,7 +295,7 @@ const addOrders = async (req, res = response) => {
 
                     let transactionid = generateIdTransaction(now, customerOrder.customerid, 4)
                     await pool
-                        .query(insertTransaction, [transactionid, now, customerOrder.customerid, 1, customerOrder.currentbalance, UpdateBalance, 'Crédito',`Orden id No. ${orders.orderId}`])
+                        .query(insertTransaction, [transactionid, now, customerOrder.customerid, 4, customerOrder.currentbalance, UpdateBalance, 'Crédito',`Orden id No. ${orders.orderId}`])
                         .then(rest => {
                             console.log("Transaction insert Successfully", ' ', rest)
                         })
