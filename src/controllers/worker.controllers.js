@@ -69,7 +69,6 @@ const deleteProduct = async (req = request, res = response) => {
     await pool
         .query(deleteQuery, [productid])
         .then(rest => {
-            console.log(rest.rows[0])
             //pool.end();
             return res.status(200).json({
                 msg: 'Delete Successfull'

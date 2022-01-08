@@ -336,7 +336,7 @@ const addOrders = async (req, res = response) => {
 
             }
         } else {
-            res.status(400).json({
+            res.status(500).json({
                 msg: 'El cliente no cuenta con saldo suficiente para realizar la compra'
             })
         }
