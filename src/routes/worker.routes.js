@@ -10,7 +10,8 @@ const router = Router();
 const { addProduct,
     deleteProduct,
     editPrice,
-    editQuantity
+    editQuantity, 
+    deleteCustomer
 } = require('../controllers/worker.controllers');
 
 router.post('/addProduct',[
@@ -20,26 +21,28 @@ router.post('/addProduct',[
     check('category', 'name is required').not().isEmpty(),
     check('image', 'name is required').not().isEmpty(),
     validationJWT,
-    // validationWorkerRole,
     validation
 ], addProduct);
 
+router.delete('/deleteCustomer',[
+    validationJWT,
+    check('cedula', 'cedula is required').not().isEmpty(),
+    validation
+], deleteCustomer);
+
 router.delete('/deleteProduct',[
     validationJWT,
-    // validationWorkerRole,
     validation
 ], deleteProduct);
 
 router.put('/editPrice',[
     validationJWT,
-    // validationWorkerRole,
     validationProduct,
     validation
 ], editPrice);
 
 router.put('/editQuantity',[
     validationJWT,
-    // validationWorkerRole,
     validationProduct,
     validation
 ], editQuantity);

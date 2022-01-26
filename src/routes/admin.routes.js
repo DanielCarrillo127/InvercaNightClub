@@ -3,63 +3,74 @@ const { Router } = require('express');
 
 const router = Router();
 
-const { 
+const {
     deleteOrders,
     getOrders,
     EarnDay,
     getMonthCost,
     PieGraph,
     weekdaygraph,
-    TableLastOrders
-    } = require('../controllers/admin.controllers');
+    TableLastOrders,
+    liquidateContributions
+} = require('../controllers/admin.controllers');
+
+
+
 const { validation,
     validationJWT,
     // validationAdminRole
 } = require('../middleware/index')
 
 
+router.get('/liquidateContributions/', [
+    validationJWT,
+    // validationAdminRole,
+    validation
+], liquidateContributions);
+
+
 router.delete('/deleteOrders', [
     validationJWT,
     // validationAdminRole,
     validation
-],deleteOrders);
+], deleteOrders);
 
 router.get('/getOrders/', [
     validationJWT,
     // validationAdminRole,
     validation
-],getOrders);
+], getOrders);
 
 router.get('/tablelastorders/', [
     validationJWT,
     // validationAdminRole,
     validation
-],TableLastOrders);
+], TableLastOrders);
 
 
 router.get('/weekdaygraph/', [
     validationJWT,
     // validationAdminRole,
     validation
-],weekdaygraph);
+], weekdaygraph);
 
 router.get('/piegraph/', [
     validationJWT,
     // validationAdminRole,
     validation
-],PieGraph);
+], PieGraph);
 
 router.get('/getMonthCost/', [
     validationJWT,
     // validationAdminRole,
     validation
-],getMonthCost);
+], getMonthCost);
 
 router.get('/earnday/', [
     validationJWT,
     // validationAdminRole,
     validation
-],EarnDay);
+], EarnDay);
 
 
 

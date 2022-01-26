@@ -260,6 +260,7 @@ const addOrders = async (req, res = response) => {
                             if (inv < 0) {
                                 return res.status(500).json({
                                     msg: 'To much product, we do not have enough',
+                                    Product: product.proname
                                 })
                             } else {
                                 products[i].setQuantity(inv);
@@ -292,17 +293,6 @@ const addOrders = async (req, res = response) => {
                             console.log(e.stack)
                         });
 
-
-                    let transactionid = generateIdTransaction(now, customerOrder.customerid, 4)
-                    await pool
-                        .query(insertTransaction, [transactionid, now, customerOrder.customerid, 4, customerOrder.currentbalance, UpdateBalance, 'Crédito',`Orden id No. ${orders.orderId}`])
-                        .then(rest => {
-                            console.log("Transaction insert Successfully", ' ', rest)
-                        })
-                        .catch(e => {
-                            console.log(e.stack)
-                        });
-
                     //Insert CART into database
                     await pool
                         .query(insertCart, cart2.toList())
@@ -316,6 +306,16 @@ const addOrders = async (req, res = response) => {
                             console.log(e.stack)
                         });
                 });
+                let UpdateBalance = customerOrder.currentbalance - total
+                let transactionid = generateIdTransaction(now, customerOrder.customerid, 4)
+                await pool
+                    .query(insertTransaction, [transactionid, now, customerOrder.customerid, 4, customerOrder.currentbalance, UpdateBalance, 'Crédito',`Orden id No. ${orders.orderId}`])
+                    .then(rest => {
+                        console.log("Transaction insert Successfully", ' ', rest)
+                    })
+                    .catch(e => {
+                        console.log(e.stack)
+                    });
 
 
                 orders.setOrderId(auxOrderId.orderid);

@@ -12,7 +12,7 @@ const searchQuery = 'select * from product where productid = $1'
 const updateQuantity = 'update product set quantity=$2, datecreated=$3, updatedatecreated=$4 where productid = $1'
 const updatePrice = 'update product set price = $2 where productid = $1'
 
-
+const deleteQueryCustomer = 'DELETE FROM customer WHERE cedula = $1'
 
 
 
@@ -65,7 +65,7 @@ const deleteProduct = async (req = request, res = response) => {
         })
     }
 
-    //Delete book into database
+    //Delete product into database
     await pool
         .query(deleteQuery, [productid])
         .then(rest => {
@@ -77,6 +77,38 @@ const deleteProduct = async (req = request, res = response) => {
         .catch(e => {
             return res.status(200).json({
                 msg: 'Imposible to delete FKey Associated. Contact the Admin',
+                error: e.stack
+            })
+        });
+
+}
+
+
+const deleteCustomer = async (req,res = response) => {
+    const pool = dbConnection();
+    const { cedula } = req.body;
+
+    //Delete customer into database
+    await pool
+        .query(deleteQueryCustomer, [cedula])
+        .then(rest => {
+            //pool.end();
+            console.log(rest)
+            if(rest.rowCount > 0){
+                return res.status(200).json({
+                    msg: 'Delete Successfull'
+                })
+            }else{
+                return res.status(400).json({
+                    msg: 'Usuario no encontrado en la base de datos, verifique la información',
+                    error: e.stack
+                })
+            }
+            
+        })
+        .catch(e => {
+            return res.status(400).json({
+                msg: 'Usuario no encontrado en la base de datos, verifique la información',
                 error: e.stack
             })
         });
@@ -231,5 +263,6 @@ module.exports = {
     deleteProduct,
     editPrice,
     editQuantity,
-    getProduct
+    getProduct,
+    deleteCustomer
 }

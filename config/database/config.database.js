@@ -1,18 +1,21 @@
 const { Pool, Client } = require('pg')
 const connectionString = process.env.DATABASE_URL
+// const database = process.env.database
+// const user = process.env.user
+// const port = process.env.portdb
 // const passwordDB = process.env.passwordDB
 
 function dbConnection() {
 
     try {
         const pool = new Pool({
-            // database: 'InvercaDB',
-            // user: 'postgres',
+            // database: database,
+            // user: user,
             // password: passwordDB,
-            // port: 5432,
-            // // ssl: {
-            // //     rejectUnauthorized: false
-            // // },
+            // port: port,
+            // ssl: {
+            //     rejectUnauthorized: false
+            // },
             // max: 20
             connectionString,
              ssl: {

@@ -1,4 +1,19 @@
 const { dbConnection } = require('../../config/database/config.database');
+
+
+const firebaseAdmin = require('firebase-admin');
+const { v4: uuidv4 } = require('uuid');
+const XLSX = require('xlsx')
+const fs = require("fs");
+
+const serviceAccount = require('../../invercafarra-firebase-adminsdk-107xl-54640ca941.json');
+const admin = firebaseAdmin.initializeApp({
+    credential: firebaseAdmin.credential.cert(serviceAccount),
+});
+const storageRef = admin.storage().bucket(`gs://invercafarra.appspot.com`);
+
+
+
 const Orders = require('../models/orders.models');
 
 const selectAll = 'select * from orders';
@@ -9,6 +24,9 @@ const selectSells = 'select * from total_sells_day()';
 const deleteQuery2 = 'DELETE FROM orders WHERE orderid = $1';
 const deleteQuery3 = 'DELETE FROM cart WHERE orderid = $1';
 
+const updateCustomerBalance = 'UPDATE customer set currentbalance = $2 where cedula = $1'
+
+const liquidateQuery = `SELECT DISTINCT cus.customerid, cus.cedula, cus.firstName, cus.lastName, cus.phoneNumber, cus.credit, cus.currentbalance, CASE WHEN EXISTS ( SELECT tran.customerid FROM transaction as tran WHERE tran.customerid = ord.customerid AND tran.transactiontype = 4 ) THEN'Compras a Crédito'WHEN NOT EXISTS ( SELECT tran.customerid FROM transaction as tran WHERE tran.customerid = ord.customerid AND tran.transactiontype = 4 ) THEN'Compras de contado'END AS usecredit,'null' AS Profits,'null' AS finalbalance FROM customer AS cus INNER JOIN orders AS ord ON ord.customerid = cus.customerid`;
 
 
 
@@ -89,7 +107,7 @@ const deleteOrders = async (req, res = response) => {
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 const TableLastOrders = async (req, res = response) => {
-    
+
     const pool = dbConnection();
     let orders = []
     await pool
@@ -100,7 +118,7 @@ const TableLastOrders = async (req, res = response) => {
                     res.status(400).json({
                         msg: 'These no orders on the database'
                     });
-                }else{
+                } else {
                     let order = rest.rows[i];
                     let table = JSON.parse(JSON.stringify({
                         orderId: order.orderid,
@@ -142,31 +160,31 @@ const weekdaygraph = async (req, res = response) => {
                     res.status(400).json({
                         msg: 'These no orders on the database'
                     });
-                }else{
+                } else {
                     let week = rest.rows[i];
                     let day;
-                    switch (week.weekday){
-                        case 1: 
+                    switch (week.weekday) {
+                        case 1:
                             day = 'Lunes';
                             break;
-                        
-                        case 2: 
+
+                        case 2:
                             day = 'Martes';
                             break;
 
-                        case 3: 
+                        case 3:
                             day = 'Miercoles';
                             break;
 
-                        case 4: 
+                        case 4:
                             day = 'Jueves';
                             break;
 
-                        case 5: 
+                        case 5:
                             day = 'Viernes';
                             break;
 
-                        case 6: 
+                        case 6:
                             day = 'Sabado';
                             break;
 
@@ -177,7 +195,7 @@ const weekdaygraph = async (req, res = response) => {
                     let weekend = JSON.parse(JSON.stringify({
                         xDay: day,
                         ySells: week.sells
-                        
+
                     }))
                     weeks[i] = weekend
                 }
@@ -209,12 +227,12 @@ const PieGraph = async (req, res = response) => {
                     res.status(400).json({
                         msg: 'These no orders on the database'
                     });
-                }else{
+                } else {
                     let data = rest.rows[i];
                     let pie = JSON.parse(JSON.stringify({
                         proname: data.proname,
                         total: data.total
-                        
+
                     }))
                     pies[i] = pie
                 }
@@ -265,7 +283,6 @@ const getMonthCost = async (req, res = response) => {
 
 }
 
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //                                                                                              GET EARNED TODAY NUMBER
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -276,7 +293,7 @@ const EarnDay = async (req, res = response) => {
         .query(selectSells)
         .then(rest => {
             data = rest.rows[0];
-            if (data == null){
+            if (data == null) {
                 data = 0;
             }
             //pool.end();
@@ -291,6 +308,127 @@ const EarnDay = async (req, res = response) => {
 }
 
 
+const liquidateContributions = async (req, res = response) => {
+
+
+    const pool = dbConnection();
+    let data = [];
+
+    //data with the users and the distinction of useCredit
+    await pool
+        .query(liquidateQuery)
+        .then(rest => {
+            data = rest.rows;
+
+        })
+        .catch(e => console.error(e.stack));
+
+    //apply the % for every case
+    data.forEach(function (customer) {
+        //1st Use Case -liquidate Contributions
+        if (customer.usecredit === "Compras a Crédito") {
+            customer.profits = (customer.credit / 5) * 0.03;
+            customer.finalbalance = customer.currentbalance + customer.profits;
+            // 2nd Use Case - Credit liquidation
+            // if (customer.currentbalance !== customer.credit) {
+            //     const CreditLiq = customer.currentbalance * 0.03;
+            //     customer.finalbalance = customer.currentbalance - CreditLiq;
+            //     customer.Aplicaliq_Credito = 'si';
+            // } else {
+            //     customer.Aplicaliq_Credito = 'no';
+            // }
+        } else {
+            customer.profits = (customer.credit / 5) * 0.06;
+            customer.finalbalance = customer.currentbalance + customer.profits;
+        }
+
+        if (customer.finalbalance < customer.credit) {
+            updatebalence(customer.cedula, customer.finalbalance)
+        }
+    })
+
+    //clean Data from the json
+    const CleanData = data.map(({
+        customerid: idCliente, cedula: Cedula ,firstname: Nombre, lastname: Apellidos, phonenumber: NumTelefono, credit: CupoMaximo, currentbalance: SaldoActual, usecredit: UsoCredito, profits:  Beneficios, finalbalance: SaldoFinal}) => ({
+            idCliente,
+            Cedula,
+            Nombre,
+            Apellidos,
+            NumTelefono,
+            CupoMaximo,
+            SaldoActual,
+            UsoCredito,
+            Beneficios,
+            SaldoFinal
+        }));
+
+    //set the correct date for the liquidation
+    const current = new Date();
+    current.setMonth(current.getMonth() - 1);
+    const previousMonth = current.toLocaleString('default', { month: 'long' });
+    const filename = `liquidación_${previousMonth}_${current.getFullYear()}`
+    //convert array to excel file
+    convertJsonToExcel(CleanData, filename)
+
+    const url = await uploadFile(`./${filename}.xlsx`, `${filename}.xlsx`);
+
+    //deleteFile From the API
+    const path = `./${filename}.xlsx`;
+    try {
+        fs.unlinkSync(path);
+        console.log("File removed:", path);
+    } catch (err) {
+        console.error(err);
+    }
+
+    //return the final table
+    res.json({
+        url: url
+    })
+
+}
+
+async function uploadFile(path, filename) {
+
+    // Upload the File
+    const storage = await storageRef.upload(path, {
+        public: true,
+        destination: `liquidate/${filename}`,
+        metadata: {
+            firebaseStorageDownloadTokens: uuidv4(),
+        }
+    });
+
+
+    return storage[0].metadata.mediaLink;
+}
+
+async function updatebalence(cedula, newBalance) {
+    const pool = dbConnection();
+    await pool
+        .query(updateCustomerBalance, [cedula, newBalance])
+        .then(
+            console.log('update balence sucessfully')
+        )
+        .catch(e => {
+            console.log(e.stack)
+            return res.status(501).json({
+                resp: 'There is an error in the backend!'
+            })
+        })
+
+}
+
+const convertJsonToExcel = (json, filename) => {
+    const workSheet = XLSX.utils.json_to_sheet(json);
+    const workBook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workBook, workSheet, filename)
+    //Generate buffer
+    XLSX.write(workBook, { bookType: 'xlsx', type: 'buffer' })
+    //Binary string
+    XLSX.write(workBook, { bookType: 'xlsx', type: 'binary' })
+    XLSX.writeFile(workBook, `${filename}.xlsx`)
+}
 
 
 module.exports = {
@@ -300,5 +438,6 @@ module.exports = {
     getMonthCost,
     PieGraph,
     weekdaygraph,
-    TableLastOrders
+    TableLastOrders,
+    liquidateContributions
 }
