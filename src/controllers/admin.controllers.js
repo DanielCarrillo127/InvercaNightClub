@@ -26,7 +26,7 @@ const deleteQuery3 = 'DELETE FROM cart WHERE orderid = $1';
 
 const updateCustomerBalance = 'UPDATE customer set currentbalance = $2 where cedula = $1';
 
-const liquidateQuery = `SELECT DISTINCT cus.customerid, cus.cedula, cus.firstName, cus.lastName, cus.phoneNumber, cus.credit, cus.currentbalance, CASE WHEN EXISTS ( SELECT tran.customerid FROM transaction as tran WHERE tran.customerid = ord.customerid AND tran.transactiontype = 4 ) THEN'Compras a Crédito'WHEN NOT EXISTS ( SELECT tran.customerid FROM transaction as tran WHERE tran.customerid = ord.customerid AND tran.transactiontype = 4 ) THEN'Compras de contado'END AS usecredit,'null' AS Profits,'null' AS finalbalance FROM customer AS cus INNER JOIN orders AS ord ON ord.customerid = cus.customerid`;
+const liquidateQuery = `SELECT DISTINCT cus.customerid, cus.cedula, cus.firstName, cus.lastName, cus.phoneNumber, cus.credit, cus.currentbalance, CASE WHEN EXISTS ( SELECT tran.customerid FROM transaction as tran WHERE tran.customerid = ord.customerid AND tran.transactiontype = 4 ) THEN'Compras a Crédito'WHEN NOT EXISTS ( SELECT tran.customerid FROM transaction as tran WHERE tran.customerid = ord.customerid AND tran.transactiontype = 4 ) THEN'pagos de contado'END AS usecredit,'null'AS Profits,'null'AS finalbalance FROM customer AS cus INNER JOIN orders AS ord ON ord.customerid = cus.customerid WHERE ord.datecreated >= date_trunc('month', current_timestamp) - interval'1 month'AND ord.datecreated < date_trunc('month', current_timestamp)`;
 
 
 
@@ -332,16 +332,17 @@ const liquidateContributions = async (req, res = response) => {
             customer.profits = (customer.credit / 5) * 0.03;
             customer.finalbalance = customer.currentbalance + customer.profits;
             // 2nd Use Case - Credit liquidation
-            // if (customer.currentbalance !== customer.credit) {
-            //     const CreditLiq = customer.currentbalance * 0.03;
-            //     customer.finalbalance = customer.currentbalance - CreditLiq;
-            //     customer.Aplicaliq_Credito = 'si';
-            // } else {
-            //     customer.Aplicaliq_Credito = 'no';
-            // }
+            if (customer.currentbalance !== customer.credit) {
+                const CreditLiq = (customer.credit - customer.currentbalance) * 0.03;
+                customer.finalbalance = customer.finalbalance - CreditLiq;
+                customer.Aplicaliq_Credito = 'si';
+            } else {
+                customer.Aplicaliq_Credito = 'no';
+            }
         } else {
             customer.profits = (customer.credit / 5) * 0.06;
             customer.finalbalance = customer.currentbalance + customer.profits;
+            customer.Aplicaliq_Credito = 'no';
         }
 
         if (customer.finalbalance < customer.credit) {
@@ -349,11 +350,10 @@ const liquidateContributions = async (req, res = response) => {
         }
     })
 
-    //Aplicaliq_Credito insert if the case is correct
 
     //clean Data from the json
     const CleanData = data.map(({
-        customerid: idCliente, cedula: Cedula ,firstname: Nombre, lastname: Apellidos, phonenumber: NumTelefono, credit: CupoMaximo, currentbalance: SaldoActual, usecredit: UsoCredito, profits:  Beneficios, finalbalance: SaldoFinal}) => ({
+        customerid: idCliente, cedula: Cedula, firstname: Nombre, lastname: Apellidos, phonenumber: NumTelefono, credit: CupoMaximo, currentbalance: SaldoActual, usecredit: UsoCredito, Aplicaliq_Credito: Aplicaliq_Credito, profits: Beneficios, finalbalance: SaldoFinal }) => ({
             idCliente,
             Cedula,
             Nombre,
@@ -362,8 +362,10 @@ const liquidateContributions = async (req, res = response) => {
             CupoMaximo,
             SaldoActual,
             UsoCredito,
+            Aplicaliq_Credito,
             Beneficios,
-            SaldoFinal
+            SaldoFinal,
+
         }));
 
     //set the correct date for the liquidation

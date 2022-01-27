@@ -313,6 +313,9 @@ const extractCustomerBalance = async (req, res = response) => {
             PrecioProducto     
         }));
 
+
+        
+
       //return the final table
       res.json({
         table: CleanData
