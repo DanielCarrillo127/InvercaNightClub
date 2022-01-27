@@ -15,6 +15,12 @@ const updatePrice = 'update product set price = $2 where productid = $1'
 const deleteQueryCustomer = 'DELETE FROM customer WHERE cedula = $1'
 
 
+const Customer = require('../models/customer.models');
+const selectCustomer = 'SELECT * from customer where cedula = $1';
+
+const extractCustomer = `SELECT ord.orderid, ord.datecreated, ord.ordertype, ord.paycomplement, ord.total, cart.quantity, cart.productid,'null'AS proPrice FROM orders AS ord INNER JOIN cart ON ord.orderid = cart.orderid where ord.customerid = $1`;
+
+
 
 //POST
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -258,11 +264,68 @@ const getProduct = async (req = request, res = response) => {
 
 }
 
+
+const extractCustomerBalance = async (req, res = response) => {
+    const pool = dbConnection();
+    const { cedula } = req.body;
+
+    let data = [];
+    //Search Customer by cedula 
+    let customer;
+    await pool
+        .query(selectCustomer, [cedula])
+        .then(rest => {
+            const auxCustomer = rest.rows[0];
+            if (typeof auxCustomer != 'undefined') {
+                //Login Customer
+                customer = new Customer(auxCustomer.cedula, auxCustomer.firstname, auxCustomer.lastname, auxCustomer.datecreated, auxCustomer.phonenumber, auxCustomer.credit, auxCustomer.currentbalance, auxCustomer.customerid, auxCustomer.role);
+            }
+        })
+        .catch(e => {
+            console.log(e.stack)
+        });
+
+    if (typeof customer == 'undefined') {
+        //Customer not registered
+        return res.status(501).json({
+            resp: 'This customer is not in the database, please register!',
+            cedula: cedula
+        })
+    } else {
+        //data with the users and the distinction of useCredit
+        await pool
+            .query(extractCustomer, [customer.customerId])
+            .then(rest => {
+                data = rest.rows;
+            })
+            .catch(e => console.error(e.stack));
+    }
+
+    const CleanData = data.map(({
+        orderid: idOrden, datecreated: FechadeCompra ,ordertype: TipodeCompra, paycomplement: ComplementoPago, total: TotalOrden, quantity: Cantidad, productid: productid, proprice:PrecioProducto }) => ({
+            idOrden,
+            FechadeCompra,
+            TipodeCompra,
+            ComplementoPago,
+            TotalOrden,
+            Cantidad,
+            productid,
+            PrecioProducto     
+        }));
+
+      //return the final table
+      res.json({
+        table: CleanData
+    })
+}
+
+
 module.exports = {
     addProduct,
     deleteProduct,
     editPrice,
     editQuantity,
     getProduct,
-    deleteCustomer
+    deleteCustomer,
+    extractCustomerBalance
 }

@@ -11,7 +11,7 @@ const {
     PieGraph,
     weekdaygraph,
     TableLastOrders,
-    liquidateContributions
+    liquidateContributions,
 } = require('../controllers/admin.controllers');
 
 

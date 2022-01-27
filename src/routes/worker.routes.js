@@ -11,7 +11,8 @@ const { addProduct,
     deleteProduct,
     editPrice,
     editQuantity, 
-    deleteCustomer
+    deleteCustomer,
+    extractCustomerBalance
 } = require('../controllers/worker.controllers');
 
 router.post('/addProduct',[
@@ -46,5 +47,11 @@ router.put('/editQuantity',[
     validationProduct,
     validation
 ], editQuantity);
+
+router.post('/extractCustomerBalance/', [
+    validationJWT,
+    // validationAdminRole,
+    validation
+], extractCustomerBalance);
 
 module.exports = router;

@@ -53,7 +53,6 @@ const GetCustomer = async (req, res = response) => {
 
 
     if (typeof customer == 'undefined') {
-        //Create Customer
         return res.status(501).json({
             resp: 'This customer is not in the database, please register!',
             cedula: cedula

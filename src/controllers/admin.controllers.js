@@ -24,7 +24,7 @@ const selectSells = 'select * from total_sells_day()';
 const deleteQuery2 = 'DELETE FROM orders WHERE orderid = $1';
 const deleteQuery3 = 'DELETE FROM cart WHERE orderid = $1';
 
-const updateCustomerBalance = 'UPDATE customer set currentbalance = $2 where cedula = $1'
+const updateCustomerBalance = 'UPDATE customer set currentbalance = $2 where cedula = $1';
 
 const liquidateQuery = `SELECT DISTINCT cus.customerid, cus.cedula, cus.firstName, cus.lastName, cus.phoneNumber, cus.credit, cus.currentbalance, CASE WHEN EXISTS ( SELECT tran.customerid FROM transaction as tran WHERE tran.customerid = ord.customerid AND tran.transactiontype = 4 ) THEN'Compras a Crédito'WHEN NOT EXISTS ( SELECT tran.customerid FROM transaction as tran WHERE tran.customerid = ord.customerid AND tran.transactiontype = 4 ) THEN'Compras de contado'END AS usecredit,'null' AS Profits,'null' AS finalbalance FROM customer AS cus INNER JOIN orders AS ord ON ord.customerid = cus.customerid`;
 
@@ -286,6 +286,8 @@ const getMonthCost = async (req, res = response) => {
 //                                                                                              GET EARNED TODAY NUMBER
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+
+
 const EarnDay = async (req, res = response) => {
     const pool = dbConnection();
     let data = 0;
@@ -308,6 +310,7 @@ const EarnDay = async (req, res = response) => {
 }
 
 
+
 const liquidateContributions = async (req, res = response) => {
 
 
@@ -319,7 +322,6 @@ const liquidateContributions = async (req, res = response) => {
         .query(liquidateQuery)
         .then(rest => {
             data = rest.rows;
-
         })
         .catch(e => console.error(e.stack));
 
@@ -346,6 +348,8 @@ const liquidateContributions = async (req, res = response) => {
             updatebalence(customer.cedula, customer.finalbalance)
         }
     })
+
+    //Aplicaliq_Credito insert if the case is correct
 
     //clean Data from the json
     const CleanData = data.map(({
